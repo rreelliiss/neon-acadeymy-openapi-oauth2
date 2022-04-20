@@ -1,0 +1,388 @@
+openapi: 3.0.3
+info:
+  title: Neon Zoo
+  description: API for our Zoo
+  version: 1.0.0
+servers:
+  - url: "{protocol}://{host}:{port}/{base-path}"
+    description: Server
+    variables:
+      protocol:
+        default: http
+        description: http / https protoccol
+      host:
+        default: localhost
+        description: Server host name
+      port:
+        default: "8080"
+        description: Server port
+      base-path:
+        default: api/zoo/v1
+        description: Base path for endpoints
+
+tags:
+  - name: Animals
+    description: Endpoints related to animals in a Zoo
+  - name: Hr
+    description: Endpoints related to humans in a Zoo
+
+paths:
+  /animals/:
+    post:
+      security:
+        - basicAuth: [ ]
+        - oauth2: [ "list:animal" ]
+      tags:
+        - Animals
+      summary: Add an animal
+      description: Add an animal
+      operationId: addAnimal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimalIndividual'
+      responses:
+        '201':
+          headers:
+            ETag:
+              description: "Current version of the entity."
+              required: true
+              schema:
+                type: string
+                minLength: 1
+          description: "Animal Added"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                required:
+                  - id
+          links:
+            address:
+              # the target link operationId
+              operationId: getAnimal
+              parameters:
+                # get the `id` field from the request path parameter named `id`
+                id:  $response.body#/id
+    get:
+      security:
+        - basicAuth: [ ]
+        - oauth2: [ "list:animal" ]
+      tags:
+        - Animals
+      summary: get all animals
+      description: get all animals
+      operationId: getAllAnimals
+      parameters:
+        - name: page_size
+          description: size of a page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: "Animals in a Zoo"
+          content:
+            application/json:
+              schema:
+               $ref: '#/components/schemas/PagedAnimals'
+          links:
+            address:
+              # the target link operationId
+              operationId: getAnimal
+              parameters:
+                # get the `id` field from the request path parameter named `id`
+                id: $response.body#/animals[*]/id
+
+  /animals/{id}:
+    get:
+      security:
+        - basicAuth: []
+        - oauth2: ["read:animal"]
+      tags:
+        - Animals
+      summary: get an animal
+      description: get an animal
+      operationId: getAnimal
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: "Animal"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnimalIndividual'
+
+    put:
+      security:
+        - basicAuth: [ ]
+        - oauth2: [ "update:animal" ]
+      tags:
+        - Animals
+      summary: update an animal
+      description: update an animal
+      operationId: updateAnimal
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+        - name: If-Match
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnimalIndividual'
+      responses:
+        '200':
+          description: "product "
+          headers:
+            ETag:
+              description: "Current version of the entity."
+              required: true
+              schema:
+                type: string
+                minLength: 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnimalIndividual'
+    delete:
+      security:
+        - basicAuth: [ ]
+        - oauth2: [ "delete:animal" ]
+      tags:
+        - Animals
+      summary: remove an animal
+      description: remove an animal
+      operationId: removeAnimal
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '204':
+          description: "Animal removed"
+
+  /departments:
+    get:
+      security:
+        - basicAuth: [ ]
+        - oauth2: [ "list:department" ]
+      tags:
+        - Hr
+      summary: list deparments
+      description: list departments
+      operationId: listDepartments
+      parameters:
+        - name: paging
+          in: query
+          schema:
+            $ref: '#/components/schemas/Paging'
+          required: true
+      responses:
+        '200':
+          description: "Departments"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDepartments'
+
+
+components:
+  schemas:
+
+    PagedAnimals:
+      type: object
+      properties:
+        animals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnimalIndividual'
+        paging:
+          $ref: '#/components/schemas/Paging'
+
+    Paging:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+
+    OneOfAnimal:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/Whale'
+        - $ref: '#/components/schemas/Chamois'
+      discriminator:
+        propertyName: animalType
+
+    Individual:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+        dateOfBirth:
+          type: string
+          format: date
+      required:
+        - id
+        - name
+        - dateOfBirth
+
+    AnimalIndividual:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+        dateOfBirth:
+          type: string
+          format: date
+        animal:
+          $ref: '#/components/schemas/OneOfAnimal'
+      required:
+        - id
+
+
+    Animal:
+      type: object
+      description: An animal
+      properties:
+        typeOfFood:
+          type: string
+          enum: [Herbivore, Carnivora, Omnivore, Other]
+
+    WaterAnimal:
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            waterEnvironment:
+              type: string
+              enum:
+                - Saltwater
+                - Freshwater
+                - Both
+
+    LandAnimal:
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            legCount:
+              type: integer
+              minimum: 0
+
+
+    Mammal:
+      type: object
+      description: A mamal
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            mamilaCount:
+              type: integer
+              minimum: 2
+              maximum: 8
+
+
+    Chamois:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Mammal'
+        - $ref: '#/components/schemas/LandAnimal'
+        - type: object
+          properties:
+            hornLength:
+              type: number
+              minimum: 0
+            animalType:
+              type: string
+
+
+    Whale:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Mammal'
+        - $ref: '#/components/schemas/WaterAnimal'
+        - type: object
+          properties:
+            flipperSize:
+              type: number
+            animalType:
+              type: string
+
+
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    PagedDepartments:
+      type: object
+      properties:
+        paging:
+          $ref: '#/components/schemas/Paging'
+        departments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+
+
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+    oauth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: http://tralala.tralala/refresh
+          refreshUrl: http://tralala.tralala/refresh
+          scopes:
+            "create:animal": create animal
+            "read:animal": read animal
+            "list:animal": list animal
+            "update:animal": update animal
+            "delete:animal": delete animal
+            "list:department": list department
