@@ -1,0 +1,186 @@
+openapi: 3.0.3
+info:
+  title: Neon Zoo
+  description: Neon academy Zoo
+  version: 1.0.0
+servers:
+  - url: "{protocol}://{host}:{port}/{base-path}"
+    variables:
+      protocol:
+        default: http
+        description: http / https
+      host:
+        default: localhost
+      port:
+        default: "8080"
+      base-path:
+        default: api/zoo/v1
+
+tags:
+  - name: Animals
+    description: Endpoints related to animals in a Zoo
+  - name: Hr
+    description: Entroints related to humans in a Zoo
+
+paths:
+  /animals/:
+    post:
+      tags:
+        - Animals
+      summary: Add an animal
+      description: Add an animal ....
+      operationId: addAnimal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnimalIndividual"
+      responses:
+        "201":
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                required:
+                  - id
+          links:
+            linkToAnimal:
+              operationId: getAnimal
+              parameters:
+                id: $response.body#/id
+
+          description: Animal is created
+
+  /animals/{id}:
+    get:
+      security:
+        - basicAuth: [ ]
+      tags:
+        - Animals
+      operationId: getAnimal
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: "ok"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimalIndividual"
+
+components:
+  schemas:
+
+#    AnimalIndividuals:
+#      type: array
+#      items:
+#        $ref: "#/components/schemas/AnimalIndividual"
+
+
+    Animal:
+      description: An animal
+      type: object
+      properties:
+        typeOfFood:
+          type: string
+          enum:
+            - Herbivore
+            - Carnivora
+            - Omnivore
+            - Other
+
+    WaterAnimal:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            flipperSize:
+              type: number
+              minimum: 0
+
+    LandAnimal:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            legCount:
+              type: integer
+              minimum: 0
+
+    Mammal:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            mamilaCount:
+              type: integer
+              minimum: 2
+              maximum: 10
+
+    Chamois:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Mammal'
+        - $ref: '#/components/schemas/LandAnimal'
+        - type: object
+          properties:
+            hornLength:
+              type: number
+              minimum: 0
+            animalType:
+              type: string
+
+    Whale:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Mammal'
+        - $ref: '#/components/schemas/WaterAnimal'
+        - type: object
+          properties:
+            animalType:
+              type: string
+
+    OneOfAnimal:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/Chamois'
+        - $ref: '#/components/schemas/Whale'
+      discriminator:
+        propertyName: animalType
+
+    AnimalIndividual:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        animal:
+          $ref: '#/components/schemas/OneOfAnimal'
+      required:
+        - id
+        - animal
+
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
